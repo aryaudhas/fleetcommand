@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FleetCommand — Home</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<script src="config.js"></script>
+<script src="nav.js"></script>
+
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-badge">🇨🇦 Canadian Fleet Management</div>
+    <h1 class="hero-title">Track Every Truck.<br>Every Route.<br><span>In Real Time.</span></h1>
+    <p class="hero-desc">FleetCommand gives you complete visibility over your Canadian logistics network — live GPS tracking, driver management, and route analytics all in one place.</p>
+    <div class="hero-actions">
+      <a href="tracking.html" class="btn-primary">📡 Open Live Map</a>
+      <a href="analytics.html" class="btn-secondary">📊 View Analytics</a>
+    </div>
+  </div>
+  <div class="hero-right">
+    <div class="hero-stat-card">
+      <div class="hero-stat-label"><div class="hero-stat-dot blue"></div>Total Fleet</div>
+      <div class="hero-stat-num" id="h-total">—</div>
+    </div>
+    <div class="hero-stat-card">
+      <div class="hero-stat-label"><div class="hero-stat-dot green"></div>Moving</div>
+      <div class="hero-stat-num" id="h-moving">—</div>
+    </div>
+    <div class="hero-stat-card">
+      <div class="hero-stat-label"><div class="hero-stat-dot amber"></div>Idle</div>
+      <div class="hero-stat-num" id="h-idle">—</div>
+    </div>
+    <div class="hero-stat-card">
+      <div class="hero-stat-label"><div class="hero-stat-dot red"></div>Delayed</div>
+      <div class="hero-stat-num" id="h-delayed">—</div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" style="max-width:1200px;margin:0 auto 40px;border-color:var(--border);">
+
+<div class="quick-nav" style="padding-bottom:40px;">
+  <a href="tracking.html" class="quick-nav-card">
+    <div class="quick-nav-icon">📡</div>
+    <div class="quick-nav-title">Live Tracking</div>
+    <div class="quick-nav-desc">Watch your entire fleet move in real time on an interactive map. Dispatch new trucks instantly.</div>
+    <div class="quick-nav-arrow">→</div>
+  </a>
+  <a href="drivers.html" class="quick-nav-card">
+    <div class="quick-nav-icon">👤</div>
+    <div class="quick-nav-title">Driver Management</div>
+    <div class="quick-nav-desc">View all drivers, their assigned trucks, current routes, and update statuses on the fly.</div>
+    <div class="quick-nav-arrow">→</div>
+  </a>
+  <a href="analytics.html" class="quick-nav-card">
+    <div class="quick-nav-icon">📊</div>
+    <div class="quick-nav-title">Analytics</div>
+    <div class="quick-nav-desc">Fleet performance charts, top routes, status breakdowns, and growth trends over time.</div>
+    <div class="quick-nav-arrow">→</div>
+  </a>
+</div>
+
+<div class="recent-section">
+  <div class="section-head">
+    <div>
+      <div class="section-title" style="margin-bottom:4px;">Recently Dispatched</div>
+      <div class="section-title-lg">Active Fleet</div>
+    </div>
+    <a href="drivers.html" class="btn-secondary" style="padding:8px 16px;font-size:11px;">View All →</a>
+  </div>
+  <div class="card">
+    <table class="data-table">
+      <thead><tr><th>Truck ID</th><th>Driver</th><th>Route</th><th>Status</th><th>Dispatched</th></tr></thead>
+      <tbody id="recentBody">
+        <tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:30px;">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script>
+async function loadHome() {
+  try {
+    const [tr, sr] = await Promise.all([apiFetch('/api/trucks'), apiFetch('/api/stats')]);
+    if (!tr.ok || !sr.ok) throw new Error();
+    const trucks = await tr.json();
+    const stats  = await sr.json();
+    document.getElementById('h-total').textContent   = stats.total;
+    document.getElementById('h-moving').textContent  = stats.moving;
+    document.getElementById('h-idle').textContent    = stats.idle;
+    document.getElementById('h-delayed').textContent = stats.delayed;
+    const recent = [...trucks].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,10);
+    const tbody  = document.getElementById('recentBody');
+    tbody.innerHTML = recent.length ? recent.map(t=>`
+      <tr>
+        <td class="td-id">${t.id}</td>
+        <td style="font-family:var(--font-mono);font-size:12px;">${t.driver}</td>
+        <td style="color:var(--text-muted);font-size:12px;">📍 ${t.origin} → ${t.destination}</td>
+        <td><span class="pill ${t.status}">${t.status}</span></td>
+        <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">${fmtDate(t.createdAt)}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:30px;">No trucks yet.</td></tr>`;
+  } catch {
+    document.getElementById('recentBody').innerHTML =
+      `<tr><td colspan="5" style="text-align:center;padding:30px;">
+        <span style="color:var(--red);">⚠ Cannot reach server.</span><br>
+        <span style="font-size:11px;color:var(--text-dim);">Run <code style="color:var(--accent);">npm start</code> then open <code style="color:var(--accent);">http://localhost:3000</code></span>
+      </td></tr>`;
+  }
+}
+function fmtDate(iso){
+  if(!iso)return'—';
+  const d=new Date(iso);
+  return d.toLocaleDateString('en-CA',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit',hour12:false});
+}
+loadHome();
+</script>
+</body>
+</html>

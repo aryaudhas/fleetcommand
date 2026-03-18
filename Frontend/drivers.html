@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Drivers — FleetCommand</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .avatar{width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;border:2px solid var(--border);}
+    .driver-cell{display:flex;align-items:center;gap:10px;}
+    .driver-name{font-size:13px;font-weight:700;color:var(--text-primary);}
+    .driver-trips{font-size:10px;font-family:var(--font-mono);color:var(--text-dim);}
+    .prog-wrap{display:flex;align-items:center;gap:8px;}
+    .prog-bg{flex:1;height:5px;background:var(--border);border-radius:3px;min-width:60px;}
+    .prog-fill{height:100%;border-radius:3px;transition:width .5s;}
+    .prog-lbl{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);min-width:28px;text-align:right;}
+    .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+    .kpi-box{background:var(--bg-panel);border:1px solid var(--border);border-radius:7px;padding:14px 16px;text-align:center;}
+    .kpi-num{font-family:var(--font-mono);font-size:24px;font-weight:700;line-height:1.1;}
+    .kpi-lbl{font-size:10px;color:var(--text-dim);margin-top:4px;letter-spacing:.08em;text-transform:uppercase;}
+    .tab-row{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);}
+    .tab-btn{padding:9px 20px;font-size:12px;font-weight:700;color:var(--text-muted);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:var(--font-display);letter-spacing:.04em;transition:color .2s,border-color .2s;margin-bottom:-1px;}
+    .tab-btn:hover{color:var(--text-primary);}
+    .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+    .lb-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+    .lb-row:last-child{border-bottom:none;}
+    .lb-rank{font-family:var(--font-mono);font-size:17px;font-weight:700;color:var(--text-dim);min-width:26px;text-align:center;}
+    .lb-rank.gold{color:#fbbf24;}.lb-rank.silver{color:#94a3b8;}.lb-rank.bronze{color:#c2773c;}
+    .lb-name{flex:1;font-weight:700;font-size:13px;}
+    .lb-bar-bg{width:110px;height:5px;background:var(--border);border-radius:3px;}
+    .lb-bar{height:100%;border-radius:3px;}
+    .lb-val{font-family:var(--font-mono);font-size:11px;font-weight:700;min-width:60px;text-align:right;}
+    .tl-item{display:flex;gap:12px;padding:9px 0;}
+    .tl-dot-col{display:flex;flex-direction:column;align-items:center;width:14px;flex-shrink:0;padding-top:5px;}
+    .tl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+    .tl-line{flex:1;width:1px;background:var(--border);margin-top:4px;}
+    .tl-item:last-child .tl-line{display:none;}
+    .tl-time{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);min-width:72px;padding-top:2px;}
+    .tl-text{font-size:12px;color:var(--text-muted);padding-top:1px;line-height:1.5;}
+    .tl-text strong{color:var(--text-primary);}
+    .panel{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:20px 22px;margin-bottom:18px;}
+    .panel-ttl{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px;}
+    /* ── ACTIVE DRIVER CARDS ── */
+    .duty-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+    .duty-card{background:var(--bg-panel);border:1px solid var(--border);border-radius:8px;padding:14px;}
+    .duty-card-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+    .duty-ava{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#080b11;flex-shrink:0;}
+    .duty-name{font-size:13px;font-weight:700;color:var(--text-primary);}
+    .duty-id{font-family:var(--font-mono);font-size:10px;color:var(--accent);}
+    .duty-route{font-size:11px;color:var(--text-dim);margin-bottom:8px;}
+    .duty-bar-bg{height:5px;background:var(--border);border-radius:3px;overflow:hidden;}
+    .duty-bar-fill{height:100%;border-radius:3px;background:var(--green);}
+    .duty-pct{font-family:var(--font-mono);font-size:9px;color:var(--text-dim);margin-top:4px;}
+    .no-drivers{color:var(--text-dim);font-size:13px;padding:16px 0;}
+  </style>
+</head>
+<body>
+<script src="config.js"></script>
+<script src="nav.js"></script>
+
+<div class="page-wrap">
+  <div class="section-head" style="margin-bottom:22px;">
+    <div>
+      <div class="section-title" style="margin-bottom:4px;">Fleet Management</div>
+      <div class="section-title-lg">Drivers &amp; Trucks</div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-secondary" onclick="loadDrivers()" style="padding:9px 18px;font-size:11px;">↺ Refresh</button>
+      <a href="tracking.html" class="btn-primary" style="padding:9px 18px;font-size:11px;">+ Dispatch New</a>
+    </div>
+  </div>
+
+  <!-- KPI bar -->
+  <div class="panel" style="margin-bottom:20px;">
+    <div class="panel-ttl">Fleet Overview</div>
+    <div class="kpi-row">
+      <div class="kpi-box"><div class="kpi-num" id="kpi-total"   style="color:var(--blue);">—</div><div class="kpi-lbl">Total Units</div></div>
+      <div class="kpi-box"><div class="kpi-num" id="kpi-moving"  style="color:var(--green);">—</div><div class="kpi-lbl">On The Road</div></div>
+      <div class="kpi-box"><div class="kpi-num" id="kpi-idle"    style="color:var(--accent);">—</div><div class="kpi-lbl">Idle</div></div>
+      <div class="kpi-box"><div class="kpi-num" id="kpi-delayed" style="color:var(--red);">—</div><div class="kpi-lbl">Delayed</div></div>
+      <div class="kpi-box"><div class="kpi-num" id="kpi-cities"  style="color:var(--text-primary);">—</div><div class="kpi-lbl">Cities</div></div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-row">
+    <button class="tab-btn active" onclick="showTab('fleet',this)">🚛 All Trucks</button>
+    <button class="tab-btn"        onclick="showTab('lb',this)">🏆 Leaderboard</button>
+    <button class="tab-btn"        onclick="showTab('activity',this)">🕐 Activity Log</button>
+  </div>
+
+  <!-- TAB: Fleet Table -->
+  <div id="tab-fleet">
+    <div class="drivers-toolbar">
+      <div class="search-wrap">
+        <div class="search-icon">🔍</div>
+        <input type="text" id="searchInput" placeholder="Search driver, truck, city..." oninput="renderTable()">
+      </div>
+      <div class="filter-btns">
+        <button class="filter-btn active"  onclick="setFilter('all',this)">All</button>
+        <button class="filter-btn moving"  onclick="setFilter('moving',this)">Moving</button>
+        <button class="filter-btn idle"    onclick="setFilter('idle',this)">Idle</button>
+        <button class="filter-btn delayed" onclick="setFilter('delayed',this)">Delayed</button>
+      </div>
+    </div>
+    <div class="card">
+      <table class="data-table">
+        <thead><tr>
+          <th onclick="sortBy('id')" style="cursor:pointer;">Truck ↕</th>
+          <th onclick="sortBy('driver')" style="cursor:pointer;">Driver ↕</th>
+          <th>Route</th>
+          <th>Progress</th>
+          <th>Status</th>
+          <th onclick="sortBy('createdAt')" style="cursor:pointer;">Dispatched ↕</th>
+          <th>Actions</th>
+        </tr></thead>
+        <tbody id="driversBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB: Leaderboard -->
+  <div id="tab-lb" style="display:none;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;">
+      <div class="panel" style="margin-bottom:0;"><div class="panel-ttl">🏅 Most Trips This Month</div><div id="lb-trips"></div></div>
+      <div class="panel" style="margin-bottom:0;"><div class="panel-ttl">📍 Total Distance Driven</div><div id="lb-dist"></div></div>
+    </div>
+    <!-- ── ACTIVE DRIVERS — this is what was broken ── -->
+    <div class="panel" style="margin-bottom:0;">
+      <div class="panel-ttl">⚡ Currently On The Road (<span id="duty-count">0</span> drivers)</div>
+      <div class="duty-grid" id="duty-grid"></div>
+    </div>
+  </div>
+
+  <!-- TAB: Activity -->
+  <div id="tab-activity" style="display:none;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+      <div class="panel" style="margin-bottom:0;"><div class="panel-ttl">📦 Recent Dispatch Events</div><div id="tl-dispatch"></div></div>
+      <div class="panel" style="margin-bottom:0;"><div class="panel-ttl">⚠ Delays &amp; Incidents</div><div id="tl-incidents"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:5000;align-items:center;justify-content:center;">
+  <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:10px;padding:28px;width:420px;max-width:90vw;">
+    <div style="font-size:15px;font-weight:800;margin-bottom:20px;">Edit Truck <span id="editLabel" style="color:var(--accent);font-family:var(--font-mono);"></span></div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="field"><label>Driver Name</label><input id="editDriver" type="text"></div>
+      <div class="field"><label>Origin</label><input id="editOrigin" type="text"></div>
+      <div class="field"><label>Destination</label><input id="editDest" type="text"></div>
+      <div class="field"><label>Status</label>
+        <select id="editStatus"><option value="moving">Moving</option><option value="idle">Idle</option><option value="delayed">Delayed</option></select>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end;">
+      <button class="btn-secondary" onclick="closeModal()" style="padding:9px 18px;font-size:12px;">Cancel</button>
+      <button class="btn-primary"   onclick="saveEdit()"   style="padding:9px 18px;font-size:12px;">Save Changes</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+// ── Static lookup data keyed by truck ID ──────────────────────
+// This approach fixes the bug: we always look up by ID, not by
+// array index, so order doesn't matter.
+const COLORS = ['#f59e0b','#10b981','#38bdf8','#f43f5e','#a78bfa','#fb923c','#34d399','#60a5fa','#f472b6','#4ade80'];
+
+const TRUCK_META = {
+  'CA-101':{trips:18,dist:4820,pct:72,color:'#f59e0b'},
+  'CA-102':{trips:15,dist:3960,pct:88,color:'#10b981'},
+  'CA-103':{trips:14,dist:3540,pct:45,color:'#38bdf8'},
+  'CA-104':{trips:13,dist:3110,pct:30,color:'#f43f5e'},
+  'CA-105':{trips:12,dist:2890,pct:91,color:'#a78bfa'},
+  'CA-106':{trips:11,dist:2760,pct:60,color:'#fb923c'},
+  'CA-107':{trips:11,dist:2600,pct:0, color:'#34d399'},
+  'CA-108':{trips:10,dist:2450,pct:55,color:'#60a5fa'},
+  'CA-109':{trips:9, dist:2300,pct:80,color:'#f472b6'},
+  'CA-110':{trips:8, dist:2100,pct:67,color:'#4ade80'},
+  'CA-111':{trips:8, dist:1980,pct:0, color:'#f59e0b'},
+  'CA-112':{trips:7, dist:1850,pct:76,color:'#10b981'},
+  'CA-113':{trips:6, dist:1700,pct:83,color:'#38bdf8'},
+  'CA-114':{trips:6, dist:1600,pct:48,color:'#f43f5e'},
+  'CA-115':{trips:5, dist:1450,pct:22,color:'#a78bfa'},
+  'CA-116':{trips:5, dist:1300,pct:64,color:'#fb923c'},
+  'CA-117':{trips:4, dist:1200,pct:95,color:'#34d399'},
+  'CA-118':{trips:4, dist:1100,pct:38,color:'#60a5fa'},
+  'CA-119':{trips:3, dist:980, pct:0, color:'#f472b6'},
+  'CA-120':{trips:3, dist:840, pct:71,color:'#4ade80'},
+};
+
+const DISPATCH_EVENTS = [
+  {time:'Today 07:20', text:'<strong>Tom Briggs</strong> dispatched — Kelowna → Winnipeg',dot:'#10b981'},
+  {time:'Today 08:50', text:'<strong>Rick Santos</strong> dispatched — Moncton → Quebec City',dot:'#10b981'},
+  {time:'Yesterday',   text:'<strong>Sophia Gagnon</strong> dispatched — Regina → Calgary',dot:'#f59e0b'},
+  {time:'Yesterday',   text:'<strong>Quinn Lavoie</strong> dispatched — Vancouver → Victoria',dot:'#10b981'},
+  {time:'Mar 13',      text:'<strong>Pam Delacroix</strong> dispatched — Toronto → Halifax',dot:'#10b981'},
+  {time:'Mar 12',      text:'<strong>Oscar Reyes</strong> dispatched — Winnipeg → Edmonton',dot:'#f43f5e'},
+  {time:'Mar 12',      text:'<strong>Nina Dubois</strong> dispatched — Montreal → Toronto',dot:'#10b981'},
+  {time:'Mar 11',      text:'<strong>Mia Fontaine</strong> dispatched — Kelowna → Victoria',dot:'#10b981'},
+];
+
+const INCIDENTS = [
+  {time:'Today 10:45', text:'<strong>Oscar Reyes</strong> (CA-115) — Road closure on Trans-Canada near Portage la Prairie',dot:'#f43f5e'},
+  {time:'Today 09:30', text:'<strong>David Singh</strong> (CA-104) — Weather delay near Amherst NS. ETA +2hr',dot:'#f59e0b'},
+  {time:'Yesterday',   text:'<strong>Grace Kim</strong> (CA-107) — Scheduled maintenance stop in Kelowna',dot:'#f59e0b'},
+  {time:'Yesterday',   text:'<strong>Kara Johansson</strong> (CA-111) — Awaiting loading dock at destination',dot:'#f59e0b'},
+  {time:'Mar 13',      text:'<strong>Leo Patel</strong> (CA-112) — Minor delay at weigh station, now cleared',dot:'#38bdf8'},
+  {time:'Mar 12',      text:'<strong>Frank Leblanc</strong> (CA-106) — Extended fuel stop, back on route',dot:'#38bdf8'},
+  {time:'Mar 11',      text:'<strong>Henry Okafor</strong> (CA-108) — Resumed after mandatory rest period',dot:'#10b981'},
+  {time:'Mar 10',      text:'<strong>Bob Tremblay</strong> (CA-102) — Cleared Rogers Pass without incident',dot:'#10b981'},
+];
+
+// ── State ──────────────────────────────────────────────────
+let allTrucks     = [];
+let currentFilter = 'all';
+let currentSort   = {field:'createdAt', asc:false};
+let editingId     = null;
+
+// ── Load data ──────────────────────────────────────────────
+async function loadDrivers() {
+  try {
+    const res = await apiFetch('/api/trucks');
+    if (!res.ok) throw new Error();
+    allTrucks = await res.json();
+    showToast('✓ Synced with server');
+  } catch {
+    // Fall back to built-in data so page is never empty
+    allTrucks = Object.entries(TRUCK_META).map(([id, m], i) => ({
+      id,
+      driver: ['Alice Martin','Bob Tremblay','Charlie Nguyen','David Singh','Eva Kowalski',
+               'Frank Leblanc','Grace Kim','Henry Okafor','Ivy Beaumont','Jack Fortier',
+               'Kara Johansson','Leo Patel','Mia Fontaine','Nina Dubois','Oscar Reyes',
+               'Pam Delacroix','Quinn Lavoie','Rick Santos','Sophia Gagnon','Tom Briggs'][i],
+      origin: ['Toronto','Vancouver','Ottawa','Halifax','Winnipeg','Edmonton','Victoria','Fredericton',
+               'Quebec City','Calgary','Saskatoon','Regina','Kelowna','Montreal','Winnipeg',
+               'Toronto','Vancouver','Moncton','Regina','Kelowna'][i],
+      destination: ['Montreal','Calgary','Quebec City','Moncton','Regina','Saskatoon','Kelowna','Halifax',
+                    'Ottawa','Vancouver','Edmonton','Winnipeg','Victoria','Toronto','Edmonton',
+                    'Halifax','Victoria','Quebec City','Calgary','Winnipeg'][i],
+      status: ['moving','moving','moving','delayed','moving','moving','idle','moving','moving','moving',
+               'idle','moving','moving','moving','delayed','moving','moving','moving','idle','moving'][i],
+      createdAt: new Date(Date.now() - i * 86400000).toISOString()
+    }));
+    showToast('⚠ Server offline — showing demo data', 'error');
+  }
+  updateKPIs();
+  renderTable();
+}
+
+function updateKPIs() {
+  document.getElementById('kpi-total').textContent   = allTrucks.length;
+  document.getElementById('kpi-moving').textContent  = allTrucks.filter(t=>t.status==='moving').length;
+  document.getElementById('kpi-idle').textContent    = allTrucks.filter(t=>t.status==='idle').length;
+  document.getElementById('kpi-delayed').textContent = allTrucks.filter(t=>t.status==='delayed').length;
+  const cities = new Set([...allTrucks.map(t=>t.origin), ...allTrucks.map(t=>t.destination)]);
+  document.getElementById('kpi-cities').textContent  = cities.size;
+}
+
+// ── Tabs ──────────────────────────────────────────────────
+function showTab(name, btn) {
+  ['fleet','lb','activity'].forEach(n => document.getElementById('tab-'+n).style.display='none');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+name).style.display = 'block';
+  btn.classList.add('active');
+  if (name==='lb')       renderLeaderboard();
+  if (name==='activity') renderActivity();
+}
+
+// ── Leaderboard + Active Drivers ─────────────────────────
+function renderLeaderboard() {
+  // Sort trucks by trips descending for leaderboard
+  const byTrips = [...allTrucks].sort((a,b) => {
+    const ma = TRUCK_META[a.id]?.trips || 0;
+    const mb = TRUCK_META[b.id]?.trips || 0;
+    return mb - ma;
+  });
+  const maxTrips = TRUCK_META['CA-101'].trips;
+  const maxDist  = TRUCK_META['CA-101'].dist;
+
+  // Trips leaderboard
+  document.getElementById('lb-trips').innerHTML = byTrips.slice(0,8).map((t,i) => {
+    const meta = TRUCK_META[t.id] || {trips:1,color:'#607090'};
+    return `<div class="lb-row">
+      <div class="lb-rank ${i===0?'gold':i===1?'silver':i===2?'bronze':''}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</div>
+      <div style="width:28px;height:28px;border-radius:50%;background:${meta.color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#080b11;flex-shrink:0;">${t.driver.charAt(0)}</div>
+      <div class="lb-name">${t.driver}</div>
+      <div class="lb-bar-bg"><div class="lb-bar" style="width:${(meta.trips/maxTrips*100).toFixed(0)}%;background:var(--accent);"></div></div>
+      <div class="lb-val" style="color:var(--accent);">${meta.trips} trips</div>
+    </div>`;
+  }).join('');
+
+  // Distance leaderboard
+  const byDist = [...allTrucks].sort((a,b)=>(TRUCK_META[b.id]?.dist||0)-(TRUCK_META[a.id]?.dist||0));
+  document.getElementById('lb-dist').innerHTML = byDist.slice(0,8).map((t,i) => {
+    const meta = TRUCK_META[t.id] || {dist:100,color:'#607090'};
+    return `<div class="lb-row">
+      <div class="lb-rank ${i===0?'gold':i===1?'silver':i===2?'bronze':''}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</div>
+      <div style="width:28px;height:28px;border-radius:50%;background:${COLORS[(i+4)%10]};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#080b11;flex-shrink:0;">${t.driver.charAt(0)}</div>
+      <div class="lb-name">${t.driver}</div>
+      <div class="lb-bar-bg"><div class="lb-bar" style="width:${(meta.dist/maxDist*100).toFixed(0)}%;background:var(--blue);"></div></div>
+      <div class="lb-val" style="color:var(--blue);">${meta.dist.toLocaleString()} km</div>
+    </div>`;
+  }).join('');
+
+  // ── ACTIVE DRIVERS — fixed: look up meta by truck ID, not array index ──
+  const moving = allTrucks.filter(t => t.status === 'moving');
+  document.getElementById('duty-count').textContent = moving.length;
+
+  if (moving.length === 0) {
+    document.getElementById('duty-grid').innerHTML =
+      '<div class="no-drivers">No drivers currently on the road.</div>';
+    return;
+  }
+
+  document.getElementById('duty-grid').innerHTML = moving.map(t => {
+    // Always look up by truck ID — this is the fix
+    const meta = TRUCK_META[t.id] || {pct: 50, color: '#f59e0b'};
+    const initials = t.driver.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase();
+    return `
+    <div class="duty-card">
+      <div class="duty-card-top">
+        <div class="duty-ava" style="background:${meta.color};">${initials}</div>
+        <div>
+          <div class="duty-name">${t.driver}</div>
+          <div class="duty-id">${t.id}</div>
+        </div>
+      </div>
+      <div class="duty-route">📍 ${t.origin} → ${t.destination}</div>
+      <div class="duty-bar-bg">
+        <div class="duty-bar-fill" style="width:${meta.pct}%;"></div>
+      </div>
+      <div class="duty-pct">${meta.pct}% complete</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Activity Log ──────────────────────────────────────────
+function renderActivity() {
+  const mk = events => events.map(e => `
+    <div class="tl-item">
+      <div class="tl-dot-col">
+        <div class="tl-dot" style="background:${e.dot};box-shadow:0 0 6px ${e.dot};"></div>
+        <div class="tl-line"></div>
+      </div>
+      <div class="tl-time">${e.time}</div>
+      <div class="tl-text">${e.text}</div>
+    </div>`).join('');
+  document.getElementById('tl-dispatch').innerHTML  = mk(DISPATCH_EVENTS);
+  document.getElementById('tl-incidents').innerHTML = mk(INCIDENTS);
+}
+
+// ── Fleet Table ───────────────────────────────────────────
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+}
+
+function sortBy(f) {
+  currentSort.asc   = currentSort.field===f ? !currentSort.asc : true;
+  currentSort.field = f;
+  renderTable();
+}
+
+function renderTable() {
+  const q = (document.getElementById('searchInput').value||'').toLowerCase();
+  let rows = allTrucks.filter(t => {
+    if (currentFilter!=='all' && t.status!==currentFilter) return false;
+    return !q || [t.id,t.driver,t.origin,t.destination].some(v=>v.toLowerCase().includes(q));
+  });
+  rows.sort((a,b) => {
+    const va = (a[currentSort.field]||'').toString().toLowerCase();
+    const vb = (b[currentSort.field]||'').toString().toLowerCase();
+    return va<vb?(currentSort.asc?-1:1):va>vb?(currentSort.asc?1:-1):0;
+  });
+
+  const tbody = document.getElementById('driversBody');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-dim);">No trucks match this filter.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(t => {
+    const meta    = TRUCK_META[t.id] || {trips:0, pct:50, color:'#607090'};
+    const barCol  = t.status==='moving'?'var(--green)':t.status==='delayed'?'var(--red)':'var(--text-dim)';
+    const initials= t.driver.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase();
+    return `<tr>
+      <td><span style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--accent);">${t.id}</span></td>
+      <td><div class="driver-cell">
+        <div class="avatar" style="background:${meta.color};color:#080b11;">${initials}</div>
+        <div><div class="driver-name">${t.driver}</div><div class="driver-trips">${meta.trips} trips</div></div>
+      </div></td>
+      <td style="font-size:12px;color:var(--text-muted);">${t.origin} → ${t.destination}</td>
+      <td><div class="prog-wrap">
+        <div class="prog-bg"><div class="prog-fill" style="width:${meta.pct}%;background:${barCol};"></div></div>
+        <div class="prog-lbl">${meta.pct}%</div>
+      </div></td>
+      <td><select class="status-select" onchange="updateStatus('${t.id}',this.value)">
+        <option value="moving"  ${t.status==='moving' ?'selected':''}>Moving</option>
+        <option value="idle"    ${t.status==='idle'   ?'selected':''}>Idle</option>
+        <option value="delayed" ${t.status==='delayed'?'selected':''}>Delayed</option>
+      </select></td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">${fmtDate(t.createdAt)}</td>
+      <td><div style="display:flex;gap:5px;">
+        <button class="btn-sm" onclick="openModal('${t.id}')">✎ Edit</button>
+        <button class="btn-sm danger" onclick="deleteTruck('${t.id}')">✕</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── API actions ───────────────────────────────────────────
+async function updateStatus(id, status) {
+  try {
+    await apiFetch(`/api/trucks/${id}/status`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});
+    const t=allTrucks.find(t=>t.id===id); if(t)t.status=status;
+    updateKPIs(); showToast(`✓ ${id} → ${status}`);
+  } catch { showToast('✗ Update failed','error'); }
+}
+
+async function deleteTruck(id) {
+  if (!confirm(`Remove truck ${id}?`)) return;
+  try {
+    await apiFetch(`/api/trucks/${id}`,{method:'DELETE'});
+    allTrucks=allTrucks.filter(t=>t.id!==id);
+    updateKPIs(); renderTable(); showToast(`✓ ${id} removed`);
+  } catch { showToast('✗ Remove failed','error'); }
+}
+
+function openModal(id) {
+  const t=allTrucks.find(t=>t.id===id); if(!t)return;
+  editingId=id;
+  document.getElementById('editLabel').textContent=id;
+  document.getElementById('editDriver').value=t.driver;
+  document.getElementById('editOrigin').value=t.origin;
+  document.getElementById('editDest').value=t.destination;
+  document.getElementById('editStatus').value=t.status;
+  document.getElementById('editModal').style.display='flex';
+}
+function closeModal(){document.getElementById('editModal').style.display='none';editingId=null;}
+
+async function saveEdit() {
+  if(!editingId)return;
+  const body={driver:document.getElementById('editDriver').value.trim(),origin:document.getElementById('editOrigin').value.trim(),destination:document.getElementById('editDest').value.trim(),status:document.getElementById('editStatus').value};
+  try {
+    const res=await apiFetch(`/api/trucks/${editingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const updated=res.ok?await res.json():null;
+    const idx=allTrucks.findIndex(t=>t.id===editingId);
+    if(idx!==-1)allTrucks[idx]=updated||{...allTrucks[idx],...body};
+    closeModal();updateKPIs();renderTable();showToast(`✓ ${editingId} updated`);
+  } catch{showToast('✗ Save failed','error');}
+}
+
+document.getElementById('editModal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+
+function fmtDate(iso){
+  if(!iso)return'—';
+  const d=new Date(iso);
+  return d.toLocaleDateString('en-CA',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit',hour12:false});
+}
+let _tt;
+function showToast(msg,type='success'){const el=document.getElementById('toast');el.textContent=msg;el.className='show'+(type==='error'?' error':'');clearTimeout(_tt);_tt=setTimeout(()=>{el.className='';},3000);}
+
+loadDrivers();
+</script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Live Tracking — FleetCommand</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body class="tracking-page">
+<script src="config.js"></script>
+<script src="nav.js"></script>
+
+<div id="tracking-layout">
+  <div id="sidebar">
+    <div id="addPanel">
+      <div class="panel-label" style="margin-bottom:10px;">⊕ Dispatch New Truck</div>
+      <div class="form-row">
+        <div class="field"><label>Truck ID</label><input id="truckId" type="text" placeholder="CA-121"></div>
+        <div class="field"><label>Driver</label><input id="driver" type="text" placeholder="Name"></div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Origin</label>
+          <input id="origin" type="text" placeholder="City..." autocomplete="off" oninput="autocompleteCity(this)">
+          <div class="autocomplete-list" id="originSuggestions"></div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Destination</label>
+          <input id="destination" type="text" placeholder="City..." autocomplete="off" oninput="autocompleteCity(this)">
+          <div class="autocomplete-list" id="destSuggestions"></div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Status</label>
+          <select id="status">
+            <option value="moving">Moving</option>
+            <option value="idle">Idle</option>
+            <option value="delayed">Delayed</option>
+          </select>
+        </div>
+      </div>
+      <button id="dispatchBtn">Dispatch Truck</button>
+    </div>
+    <div id="truckListHeader">
+      <div class="panel-label">Active Fleet</div>
+      <div id="truckCount">0 units</div>
+    </div>
+    <div id="truckList"></div>
+  </div>
+
+  <div id="mapWrap">
+    <div id="map"></div>
+    <div id="mapOverlay">
+      <button class="map-btn" onclick="fitAll()">⊡ Fit All</button>
+      <button class="map-btn" onclick="clearRoutes()">✕ Routes</button>
+    </div>
+    <div id="loadingOverlay">
+      <div class="loader-ring"></div>
+      <div class="loader-text" id="loaderText">LOADING FLEET</div>
+      <div class="loader-progress" id="loadProgress">Connecting...</div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

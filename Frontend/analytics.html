@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Analytics — FleetCommand</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px;}
+    .s-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:18px 20px;position:relative;overflow:hidden;}
+    .s-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;}
+    .s-card.c1::after{background:var(--blue);}.s-card.c2::after{background:var(--green);}
+    .s-card.c3::after{background:var(--accent);}.s-card.c4::after{background:var(--red);}
+    .s-lbl{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+    .s-num{font-family:var(--font-mono);font-size:34px;font-weight:700;line-height:1;}
+    .s-delta{font-size:11px;margin-top:5px;font-family:var(--font-mono);}
+    .route-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
+    .route-row:last-child{margin-bottom:0;}
+    .route-lbl{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);min-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .route-bg{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+    .route-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .7s cubic-bezier(.34,1.56,.64,1);}
+    .route-cnt{font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--accent);min-width:20px;text-align:right;}
+    .week-table{width:100%;border-collapse:collapse;font-size:12px;}
+    .week-table th{padding:8px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border);}
+    .week-table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+    .week-table tr:last-child td{border-bottom:none;}
+    .week-table tr:hover td{background:var(--bg-hover);}
+    .active-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+    .active-card{background:var(--bg-panel);border:1px solid var(--border);border-radius:7px;padding:12px 14px;display:flex;align-items:center;gap:10px;}
+    .legend{display:flex;justify-content:center;gap:18px;margin-top:12px;flex-wrap:wrap;}
+    .leg-item{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;color:var(--text-muted);}
+    .leg-dot{width:10px;height:10px;border-radius:2px;}
+  </style>
+</head>
+<body>
+<script src="config.js"></script>
+<script src="nav.js"></script>
+
+<div class="page-wrap">
+  <div class="section-head" style="margin-bottom:22px;">
+    <div>
+      <div class="section-title" style="margin-bottom:4px;">Fleet Intelligence</div>
+      <div class="section-title-lg">Analytics</div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <select id="rangeSelect" onchange="changeRange()" style="padding:8px 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:var(--font-mono);font-size:12px;outline:none;cursor:pointer;">
+        <option value="14">Last 14 days</option>
+        <option value="30">Last 30 days</option>
+        <option value="7">Last 7 days</option>
+      </select>
+      <button class="btn-secondary" onclick="loadAnalytics()" style="padding:9px 18px;font-size:11px;">↺ Refresh</button>
+    </div>
+  </div>
+
+  <div class="stat-row">
+    <div class="s-card c1"><div class="s-lbl">Total Fleet</div><div class="s-num" id="a-total" style="color:var(--blue);">20</div><div class="s-delta" style="color:var(--green);">↑ +3 this week</div></div>
+    <div class="s-card c2"><div class="s-lbl">Moving</div><div class="s-num" id="a-moving" style="color:var(--green);">14</div><div class="s-delta" id="a-moving-pct" style="color:var(--text-dim);">70% of fleet</div></div>
+    <div class="s-card c3"><div class="s-lbl">Idle</div><div class="s-num" id="a-idle" style="color:var(--accent);">3</div><div class="s-delta" id="a-idle-pct" style="color:var(--text-dim);">15% of fleet</div></div>
+    <div class="s-card c4"><div class="s-lbl">Delayed</div><div class="s-num" id="a-delayed" style="color:var(--red);">2</div><div class="s-delta" id="a-delayed-pct" style="color:var(--red);">⚠ 10% of fleet</div></div>
+  </div>
+
+  <div class="charts-grid-2" style="margin-bottom:16px;">
+    <div class="chart-card">
+      <div class="chart-ttl">Fleet Growth Over Time</div>
+      <div style="position:relative;height:220px;"><canvas id="growthChart"></canvas></div>
+    </div>
+    <div class="chart-card" style="display:flex;flex-direction:column;align-items:center;">
+      <div class="chart-ttl" style="align-self:flex-start;">Status Breakdown</div>
+      <div style="position:relative;height:180px;width:100%;"><canvas id="donutChart"></canvas></div>
+      <div class="legend" id="donutLegend"></div>
+    </div>
+  </div>
+
+  <div class="charts-grid-eq" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+    <div class="chart-card">
+      <div class="chart-ttl">Daily Dispatches</div>
+      <div style="position:relative;height:200px;"><canvas id="barChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-ttl">Activity by Day of Week</div>
+      <div style="position:relative;height:200px;"><canvas id="radarChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="chart-card" style="margin-bottom:16px;">
+    <div class="chart-ttl">Top Routes by Volume</div>
+    <div id="routesList"></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+    <div class="chart-card">
+      <div class="chart-ttl">Weekly Performance Summary</div>
+      <table class="week-table" id="weekTable"></table>
+    </div>
+    <div class="chart-card">
+      <div class="chart-ttl">Currently Active Drivers</div>
+      <div class="active-grid" id="activeGrid"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script>
+Chart.defaults.color='#607090';Chart.defaults.borderColor='#1f2d42';
+Chart.defaults.font.family="'JetBrains Mono',monospace";Chart.defaults.font.size=11;
+const COLORS=['#f59e0b','#10b981','#38bdf8','#f43f5e','#a78bfa','#fb923c'];
+const STATIC={
+  total:20,moving:14,idle:3,delayed:2,
+  topRoutes:[
+    {route:'Toronto → Montreal',count:3},{route:'Vancouver → Calgary',count:3},
+    {route:'Ottawa → Quebec City',count:2},{route:'Winnipeg → Edmonton',count:2},
+    {route:'Regina → Calgary',count:2},{route:'Kelowna → Victoria',count:2},
+    {route:'Moncton → Quebec City',count:1},{route:'Fredericton → Halifax',count:1},
+  ],
+  activeDrivers:[
+    {driver:'Alice Martin',  id:'CA-101',route:'Toronto → Montreal'},
+    {driver:'Bob Tremblay',  id:'CA-102',route:'Vancouver → Calgary'},
+    {driver:'Charlie Nguyen',id:'CA-103',route:'Ottawa → Quebec City'},
+    {driver:'Eva Kowalski',  id:'CA-105',route:'Winnipeg → Regina'},
+    {driver:'Frank Leblanc', id:'CA-106',route:'Edmonton → Saskatoon'},
+    {driver:'Henry Okafor',  id:'CA-108',route:'Fredericton → Halifax'},
+  ]
+};
+const WEEKLY=[
+  {week:'Mar 9–15', dispatched:7,completed:5,delayed:2,pct:71},
+  {week:'Mar 2–8',  dispatched:8,completed:7,delayed:1,pct:87},
+  {week:'Feb 24–2', dispatched:5,completed:5,delayed:0,pct:100},
+  {week:'Feb 17–23',dispatched:6,completed:4,delayed:2,pct:67},
+  {week:'Feb 10–16',dispatched:4,completed:4,delayed:0,pct:100},
+];
+function mkGrowth(days){const r=[];let c=10;const now=new Date();for(let i=days-1;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);c+=Math.floor(Math.random()*2);r.push({date:d.toISOString().slice(0,10),count:c});}return r;}
+let gI=null,dI=null,bI=null,rI=null;
+
+async function loadAnalytics(){
+  let s=STATIC;
+  try{const res=await apiFetch('/api/stats');if(res.ok){const d=await res.json();s={...STATIC,...d};}}catch{}
+  renderCards(s);renderGrowth(s.growth||mkGrowth(14));renderDonut(s);renderBar(mkGrowth(14));renderRadar();
+  renderRoutes(s.topRoutes||STATIC.topRoutes);renderWeekly();renderActive(s.activeDrivers||STATIC.activeDrivers);
+}
+function changeRange(){const d=parseInt(document.getElementById('rangeSelect').value);renderGrowth(mkGrowth(d));renderBar(mkGrowth(d));}
+function renderCards(s){
+  document.getElementById('a-total').textContent=s.total;
+  document.getElementById('a-moving').textContent=s.moving;
+  document.getElementById('a-idle').textContent=s.idle;
+  document.getElementById('a-delayed').textContent=s.delayed;
+  if(s.total){
+    document.getElementById('a-moving-pct').textContent=`${((s.moving/s.total)*100).toFixed(0)}% of fleet`;
+    document.getElementById('a-idle-pct').textContent=`${((s.idle/s.total)*100).toFixed(0)}% of fleet`;
+    document.getElementById('a-delayed-pct').textContent=`⚠ ${((s.delayed/s.total)*100).toFixed(0)}% of fleet`;
+  }
+}
+function renderGrowth(g){
+  if(gI)gI.destroy();
+  gI=new Chart(document.getElementById('growthChart'),{type:'line',data:{labels:g.map(x=>x.date.slice(5)),datasets:[{label:'Trucks',data:g.map(x=>x.count),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.07)',borderWidth:2,pointBackgroundColor:'#f59e0b',pointRadius:4,pointHoverRadius:6,fill:true,tension:.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#1f2d42'},ticks:{maxTicksLimit:7}},y:{grid:{color:'#1f2d42'},beginAtZero:false,ticks:{precision:0}}},animation:{duration:700}}});
+}
+function renderDonut(s){
+  if(dI)dI.destroy();
+  dI=new Chart(document.getElementById('donutChart'),{type:'doughnut',data:{labels:['Moving','Idle','Delayed'],datasets:[{data:[s.moving,s.idle,s.delayed],backgroundColor:['rgba(16,185,129,.85)','rgba(245,158,11,.85)','rgba(244,63,94,.85)'],borderColor:['#10b981','#f59e0b','#f43f5e'],borderWidth:2,hoverOffset:6}]},options:{cutout:'65%',plugins:{legend:{display:false}},animation:{duration:800}}});
+  document.getElementById('donutLegend').innerHTML=[{l:'Moving',c:'#10b981',v:s.moving},{l:'Idle',c:'#f59e0b',v:s.idle},{l:'Delayed',c:'#f43f5e',v:s.delayed}].map(i=>`<div class="leg-item"><div class="leg-dot" style="background:${i.c};"></div>${i.l} <span style="color:${i.c};font-weight:700;margin-left:4px;">${i.v}</span></div>`).join('');
+}
+function renderBar(g){
+  if(bI)bI.destroy();
+  const d=g.map(()=>Math.floor(Math.random()*4));
+  bI=new Chart(document.getElementById('barChart'),{type:'bar',data:{labels:g.map(x=>x.date.slice(5)),datasets:[{label:'Dispatches',data:d,backgroundColor:'rgba(56,189,248,.6)',borderColor:'#38bdf8',borderWidth:1,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:7}},y:{grid:{color:'#1f2d42'},beginAtZero:true,ticks:{precision:0}}},animation:{duration:700}}});
+}
+function renderRadar(){
+  if(rI)rI.destroy();
+  rI=new Chart(document.getElementById('radarChart'),{type:'radar',data:{labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],datasets:[{label:'Dispatches',data:[4,5,3,6,5,2,1],backgroundColor:'rgba(245,158,11,.1)',borderColor:'#f59e0b',borderWidth:2,pointBackgroundColor:'#f59e0b',pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{r:{grid:{color:'#1f2d42'},angleLines:{color:'#1f2d42'},ticks:{display:false},pointLabels:{color:'#607090',font:{size:11}}}},animation:{duration:700}}});
+}
+function renderRoutes(routes){
+  const max=routes[0]?.count||1;
+  document.getElementById('routesList').innerHTML=routes.map(r=>`<div class="route-row"><div class="route-lbl">📍 ${r.route}</div><div class="route-bg"><div class="route-fill" style="width:${(r.count/max*100).toFixed(0)}%"></div></div><div class="route-cnt">${r.count}</div></div>`).join('');
+}
+function renderWeekly(){
+  document.getElementById('weekTable').innerHTML=`<thead><tr><th>Week</th><th>Dispatched</th><th>Completed</th><th>Delayed</th><th>On-Time</th></tr></thead><tbody>${WEEKLY.map(w=>`<tr><td style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);">${w.week}</td><td style="font-family:var(--font-mono);font-weight:700;">${w.dispatched}</td><td style="font-family:var(--font-mono);color:var(--green);">${w.completed}</td><td style="font-family:var(--font-mono);color:${w.delayed>0?'var(--red)':'var(--text-dim)'};">${w.delayed}</td><td><div style="display:flex;align-items:center;gap:8px;"><div style="width:80px;height:5px;background:var(--border);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${w.pct}%;border-radius:3px;background:${w.pct===100?'var(--green)':w.pct>=80?'var(--accent)':'var(--red)'};"></div></div><span style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:${w.pct===100?'var(--green)':w.pct>=80?'var(--accent)':'var(--red)'};">${w.pct}%</span></div></td></tr>`).join('')}</tbody>`;
+}
+function renderActive(drivers){
+  document.getElementById('activeGrid').innerHTML=drivers.map((d,i)=>`<div class="active-card"><div style="width:34px;height:34px;border-radius:50%;background:${COLORS[i%6]};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#080b11;flex-shrink:0;">${d.driver.charAt(0)}</div><div><div style="font-size:12px;font-weight:700;">${d.driver.split(' ')[0]}</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--accent);">${d.id}</div><div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${d.route}</div></div></div>`).join('');
+}
+loadAnalytics();
+</script>
+</body>
+</html>
